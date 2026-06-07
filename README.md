@@ -1,192 +1,175 @@
 # Edge Intelligence for Multimodal Biomedical Monitoring
 
-**IEEE ICHI 2026** — Code and resources for the paper:
+**IEEE ICHI 2026** — Can a $5 microcontroller detect stress, arrhythmia, and physical activity — simultaneously — from raw wrist signals, with no cloud connection?
+
+This paper says yes.
 
 > **"Edge Intelligence for Multimodal Biomedical Monitoring: A Wearable Sensor-Fusion System for Simultaneous Activity, Stress, and Arrhythmia Detection on ESP32-S3"**
-> *Sara Khaled, [Co-authors] — IEEE International Conference on Healthcare Informatics (ICHI) 2026*
+> *Sara Khaled et al. — IEEE International Conference on Healthcare Informatics (ICHI) 2026*
 >
-> 📄 Paper link: _to be added upon publication_
-> 📎 DOI: _to be added upon publication_
+> 📄 **Paper:** _link coming upon publication_
+> 📎 **DOI:** _coming upon publication_
 
 ---
 
-## Overview
+## What it does
 
-This repository contains the full implementation of a **multi-task, edge-deployable neural network** that simultaneously classifies:
+A single compact neural network (113K parameters, 450 KB) runs **entirely on an ESP32-S3** and jointly predicts three health signals every 10 seconds from raw biosensor data:
 
-- **Physical Activity** (4 classes: Sedentary, Walking, Cycling, High-Intensity) — from PPG + Accelerometer
-- **Stress Level** (2 classes: Baseline, Stress) — from ECG + PPG + EDA
-- **Arrhythmia** (2 classes: Normal, Abnormal) — from ECG
+| Output | Task | Classes |
+|--------|------|---------|
+| 🏃 Activity | What are you doing? | Sedentary · Walking · Cycling · High-Intensity |
+| 😰 Stress | Are you stressed? | Baseline · Stress |
+| 💓 Arrhythmia | Is your heart rhythm normal? | Normal · Abnormal |
 
-The model runs directly on an **ESP32-S3** microcontroller (no cloud, no compression), processing 10-second windows of multimodal biosignals at 100 Hz.
+The system also applies **contextual alert logic** — for example, it suppresses an arrhythmia alert during a high-intensity workout, reducing false alarms.
 
 ---
 
-## System Architecture
+## Hardware
 
-```
-Sensors (AD8232 ECG · MAX30102 PPG · MPU6050 IMU · Grove GSR)
-        │
-        ▼
-ESP32-S3 Firmware  ──►  Signal Buffering & Normalization
-        │
-        ▼
-CNNTransformerV3 (112,552 params · 450 KB · FP32)
- ├── CNN Backbone   Conv1D × 3  (k = 7, 5, 3)
- ├── SE-Attention   Squeeze-and-Excitation (64→16→64)
- ├── Transformer    2 layers · 4 heads · d_model = 64
- └── Task Heads     3 parallel MLPs (Activity · Stress · Arrhythmia)
-        │
-        ▼
-  Contextual Alert Logic
-  (e.g. suppress arrhythmia alert during high-intensity exercise)
-```
+Four sensors feed into a single ESP32-S3 board over ADC and I²C:
 
-### Hardware
+![Hardware wiring diagram](figures/hardware_wiring_diagram.png)
 
-| Sensor | Modality | Interface |
-|--------|----------|-----------|
+| Sensor | Signal | Interface |
+|--------|--------|-----------|
 | AD8232 | ECG | ADC |
-| MAX30102 | PPG (SpO₂) | I²C (0x57) |
-| MPU6050 | Accelerometer / Gyro | I²C (0x68) |
-| Grove GSR | EDA / GSR | ADC |
+| MAX30102 | PPG (pulse oximetry) | I²C (0x57) |
+| MPU6050 / GY-521 | Accelerometer + Gyro | I²C (0x68) |
+| Grove GSR | EDA / Galvanic Skin Response | ADC |
 
-Wiring diagram: [`figures/hardware_wiring_diagram.png`](figures/hardware_wiring_diagram.png)
+---
+
+## Model Architecture
+
+The model is called **CNNTransformerV3**. The design philosophy: squeeze maximum accuracy into minimum flash.
+
+![Model pipeline](figures/fig1_pipeline.jpg)
+
+The pipeline takes a 10-second window (5 channels × 1000 samples) and passes it through four stages:
+
+![Architecture components](figures/fig2_components.jpg)
+
+**(a) Multi-Scale CNN** — four parallel Conv1D branches (k = 3, 5, 7, 11) capture features at different temporal resolutions and concatenate into a 32-channel representation.
+
+**(b) Residual-Conv + SE Block** — a Squeeze-and-Excitation block recalibrates channel importance, helping the model focus on the most informative sensor at each moment.
+
+**(c) Transformer Encoder** — 2 layers, 4 heads, d_model = 64. Self-attention learns temporal dependencies across the 10-second window.
+
+**(d) Task Heads** — three parallel MLPs share the same embedding and each produce one prediction.
+
+**The training model is the deployed model — no quantization or compression needed.**
 
 ---
 
 ## Results
 
-### 5-Fold Subject-Wise Cross-Validation (Primary)
+### 5-Fold Subject-Wise Cross-Validation
 
-| Task | Accuracy | F1 Macro | AUC-ROC |
-|------|----------|----------|---------|
-| Activity (4-class) | 59.2% ± 15.0% | — | 0.707 ± 0.064 |
-| Stress (2-class) | 74.5% ± 6.0% | — | 0.586 ± 0.095 |
-| Arrhythmia (2-class) | 80.0% ± 5.7% | — | **0.832 ± 0.057** |
+| Task | Accuracy | AUC-ROC |
+|------|----------|---------|
+| Activity (4-class) | 59.2% ± 15.0% | 0.707 ± 0.064 |
+| Stress (2-class) | 74.5% ± 6.0% | 0.586 ± 0.095 |
+| Arrhythmia (2-class) | **80.0% ± 5.7%** | **0.832 ± 0.057** |
 
-### ESP32-S3 Deployment
+### On-Device Performance (ESP32-S3)
 
 | Metric | Value |
 |--------|-------|
-| Inference time | 2,338 ms / 10 s window |
+| Inference time | 2,338 ms per 10 s window |
 | Duty cycle | 23.4% |
-| Power draw | 0.54 W (5.23 V · 0.10 A) |
+| Power draw | 0.54 W |
 | Flash footprint | 768 KB |
 | Free PSRAM | 7.3 MB |
 
-Full results and clinical metrics: [`evaluation_results/PAPER_RESULTS_SUMMARY.md`](evaluation_results/PAPER_RESULTS_SUMMARY.md)
+### Alert Logic Benchmark (4 Synthetic Scenarios)
+
+| Scenario | Expected alert | Correct? |
+|----------|---------------|---------|
+| Stress + sedentary | Fire alert | 96% accuracy |
+| Stress + intense exercise | Suppress alert | 97% suppression |
+| Arrhythmia + sedentary | Fire alert | 82% accuracy |
+| Arrhythmia + motion | Fire alert | 88% accuracy |
+
+> Full metrics and per-class breakdowns: [`evaluation_results/PAPER_RESULTS_SUMMARY.md`](evaluation_results/PAPER_RESULTS_SUMMARY.md)
+
+---
+
+## Datasets
+
+Three public datasets are unified into a common format (100 Hz, 5 channels: ECG · PPG · AccX · AccY · AccZ):
+
+| Dataset | Task | Subjects | Original Rate | Samples |
+|---------|------|----------|---------------|---------|
+| [PPG-DaLiA](https://archive.ics.uci.edu/dataset/495/ppg+dalia) | Activity | 15 | 64 Hz | 12,806 |
+| [WESAD](https://archive.ics.uci.edu/dataset/465/wesad+wearable+stress+and+affect+detection) | Stress | 15 | 700 Hz | 3,439 |
+| [MIT-BIH Arrhythmia](https://physionet.org/content/mitdb/1.0.0/) | Arrhythmia | 48 records | 360 Hz | 5,459 |
+
+**Total: 21,704 balanced windows · 65 subjects · split 46 train / 6 val / 13 test**
+
+> Note: Each dataset only provides labels for its own task (zero overlap). The 4-case alert benchmark uses synthetic signal compositions.
 
 ---
 
 ## Repository Structure
 
 ```
-├── src/                         # Core Python modules
-│   ├── data_loader.py           # Unified dataset loading (PPG-DaLiA · WESAD · MIT-BIH)
-│   ├── dataset_integration.py   # Cross-dataset normalisation & windowing
-│   ├── unify_data.py            # 100 Hz resampling pipeline
+├── src/                    # Core Python modules
+│   ├── data_loader.py      # Loads PPG-DaLiA, WESAD, MIT-BIH
+│   ├── dataset_integration.py
+│   ├── unify_data.py       # Resamples all signals to 100 Hz
 │   └── models/
-│       ├── cnn_transformer_lite.py   # CNNTransformerV3 (main model)
-│       └── legacy_model.py
+│       └── cnn_transformer_lite.py   # CNNTransformerV3
 │
-├── scripts/                     # Training & evaluation scripts
-│   ├── train_model.py           # Baseline training
-│   ├── train_improved.py        # Focal loss + augmentation
-│   ├── cv_model_c.py            # 5-fold cross-validation
+├── scripts/                # Training, evaluation, export
+│   ├── train_improved.py   # Focal loss + augmentation
+│   ├── cv_model_c.py       # 5-fold cross-validation
 │   ├── comprehensive_evaluation.py
 │   ├── ablation_study.py
-│   ├── convert_to_tflite.py     # TFLite export
-│   ├── export_weights_esp32.py  # C header generation for firmware
-│   └── ...
+│   └── export_weights_esp32.py  # Generates model_weights.h for firmware
 │
-├── firmware/esp32/              # PlatformIO ESP32-S3 firmware (C++)
-│   ├── platformio.ini
+├── firmware/esp32/         # PlatformIO C++ firmware
 │   └── src/
 │       ├── main.cpp
-│       ├── inference/           # On-device NN inference engine
-│       ├── sensors/             # AD8232 · MAX30102 · MPU6050 · GSR drivers
-│       ├── filters/             # ECG bandpass filter
-│       ├── buffering/           # Sliding-window buffer
-│       └── transport/           # Serial streaming / console
+│       ├── inference/      # On-device NN engine
+│       ├── sensors/        # Drivers for AD8232, MAX30102, MPU6050, GSR
+│       ├── filters/        # ECG bandpass filter
+│       └── buffering/      # Sliding-window buffer
 │
-├── edge_deployment/             # Deployment configs & normalisation stats
-│   ├── deployment_config.json
-│   ├── signal_normalization_stats.json
-│   ├── training_norm_stats.json
-│   └── test_sample.json
-│
-├── evaluation_results/          # Saved metrics & paper numbers
-│   ├── PAPER_RESULTS_SUMMARY.md
-│   ├── cv_results_5fold_*.json
-│   └── paper_numbers.json
-│
-├── training_results/
-│   └── subject_splits.json      # Train / val / test subject IDs
-│
-├── figures/                     # Pipeline diagrams & result plots
-│   ├── fig1_pipeline.jpg
-│   ├── fig2_components.jpg
-│   ├── hardware_wiring_diagram.png
-│   ├── results_case_metrics.pdf
-│   └── results_score_proxies.pdf
-│
+├── edge_deployment/        # Normalisation stats + deployment config
+├── evaluation_results/     # Paper metrics (JSON + Markdown)
+├── figures/                # Pipeline diagrams and hardware wiring
 └── requirements.txt
 ```
 
 ---
 
-## Datasets
-
-The model is trained on three publicly available datasets unified into a common 100 Hz, 5-channel format (ECG · PPG · AccX · AccY · AccZ):
-
-| Dataset | Task | Subjects | Original Rate |
-|---------|------|----------|---------------|
-| [PPG-DaLiA](https://archive.ics.uci.edu/dataset/495/ppg+dalia) | Activity (4-class) | 15 | 64 Hz |
-| [WESAD](https://archive.ics.uci.edu/dataset/465/wesad+wearable+stress+and+affect+detection) | Stress (2-class) | 15 | 700 Hz |
-| [MIT-BIH Arrhythmia](https://physionet.org/content/mitdb/1.0.0/) | Arrhythmia (2-class) | 48 records | 360 Hz |
-
-**Total:** 21,704 balanced windows · 65 subjects · 46 train / 6 val / 13 test
-
-> **Note:** The three datasets have zero label overlap — each window carries only the label from its source dataset. The 4-case alert benchmark uses synthetic signal compositions to evaluate the alert logic.
-
----
-
-## Installation
+## Quickstart
 
 ```bash
-git clone https://github.com/<your-username>/<repo-name>.git
-cd <repo-name>
+git clone https://github.com/sara-kaz/edge-biomedical-monitoring.git
+cd edge-biomedical-monitoring
 pip install -r requirements.txt
 ```
 
-Requires **Python 3.9** and **PyTorch ≥ 1.12**.
-
----
-
-## Usage
-
-### 1 · Reproduce cross-validation results
+**Reproduce cross-validation results:**
 ```bash
 python scripts/cv_model_c.py
 ```
 
-### 2 · Train from scratch
+**Train from scratch:**
 ```bash
-python scripts/train_improved.py        # focal loss + augmentation
+python scripts/train_improved.py
 ```
 
-### 3 · Run comprehensive evaluation
+**Export model weights to C header for ESP32:**
 ```bash
-python scripts/comprehensive_evaluation.py
+python scripts/export_weights_esp32.py
+# → writes firmware/esp32/src/inference/model_weights.h
 ```
 
-### 4 · Export weights for ESP32-S3 firmware
-```bash
-python scripts/export_weights_esp32.py  # generates firmware/esp32/src/inference/model_weights.h
-```
-
-### 5 · Flash firmware
+**Flash the firmware:**
 ```bash
 cd firmware/esp32
 pio run --target upload
@@ -196,14 +179,12 @@ pio run --target upload
 
 ## Citation
 
-If you use this code or build on this work, please cite:
-
 ```bibtex
 @inproceedings{khaled2026edge,
   title     = {Edge Intelligence for Multimodal Biomedical Monitoring:
                A Wearable Sensor-Fusion System for Simultaneous Activity,
                Stress, and Arrhythmia Detection on {ESP32-S3}},
-  author    = {Khaled, Sara and {others}},
+  author    = {Khaled, Sara and others},
   booktitle = {2026 IEEE International Conference on Healthcare Informatics (ICHI)},
   year      = {2026},
   note      = {DOI to be added upon publication}
@@ -214,4 +195,4 @@ If you use this code or build on this work, please cite:
 
 ## License
 
-This code is released for academic use. See [LICENSE](LICENSE) for details.
+Released for academic use. See [LICENSE](LICENSE) for details.
