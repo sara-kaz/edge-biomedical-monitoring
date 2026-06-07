@@ -1,0 +1,42 @@
+{
+  "ecg": {
+    "mean": -0.00010179959092449134,
+    "std": 0.9429508576606644,
+    "min": -12.836355488270037,
+    "max": 13.361035098174312,
+    "p5": -0.9993915629196793,
+    "p95": 1.3862618871483376
+  },
+  "ppg": {
+    "mean": NaN,
+    "std": NaN,
+    "min": NaN,
+    "max": NaN,
+    "p5": NaN,
+    "p95": NaN
+  },
+  "accel_x": {
+    "mean": NaN,
+    "std": NaN,
+    "min": NaN,
+    "max": NaN,
+    "p5": NaN,
+    "p95": NaN
+  },
+  "accel_y": {
+    "mean": NaN,
+    "std": NaN,
+    "min": NaN,
+    "max": NaN,
+    "p5": NaN,
+    "p95": NaN
+  },
+  "accel_z": {
+    "mean": NaN,
+    "std": NaN,
+    "min": NaN,
+    "max": NaN,
+    "p5": NaN,
+    "p95": NaN
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "target_sampling_rates": {
+    "ecg": 100,
+    "ppg": 100,
+    "accel": 100
+  },
+  "filter_parameters": {
+    "window_length_sec": 10,
+    "sampling_rate_hz": 100
+  },
+  "signal_normalization": {
+    "ecg": {
+      "mean": -0.00010179959092449134,
+      "std": 0.9429508576606644,
+      "min": -12.836355488270037,
+      "max": 13.361035098174312,
+      "p5": -0.9993915629196793,
+      "p95": 1.3862618871483376
+    },
+    "ppg": {
+      "mean": NaN,
+      "std": NaN,
+      "min": NaN,
+      "max": NaN,
+      "p5": NaN,
+      "p95": NaN
+    },
+    "accel_x": {
+      "mean": NaN,
+      "std": NaN,
+      "min": NaN,
+      "max": NaN,
+      "p5": NaN,
+      "p95": NaN
+    },
+    "accel_y": {
+      "mean": NaN,
+      "std": NaN,
+      "min": NaN,
+      "max": NaN,
+      "p5": NaN,
+      "p95": NaN
+    },
+    "accel_z": {
+      "mean": NaN,
+      "std": NaN,
+      "min": NaN,
+      "max": NaN,
+      "p5": NaN,
+      "p95": NaN
+    }
+  },
+  "available_signals": [
+    "ecg",
+    "ppg",
+    "accel_x",
+    "accel_y",
+    "accel_z"
+  ],
+  "available_labels": [
+    "activity",
+    "stress",
+    "arrhythmia"
+  ]
+}

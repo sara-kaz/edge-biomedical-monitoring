@@ -1,0 +1,205 @@
+{
+  "metadata": {
+    "generated_at": "2026-03-18T00:00:00",
+    "project": "Edge Intelligence for Multimodal Biomedical Monitoring",
+    "venue": "IEEE ICHI 2026",
+    "note": "Updated with V5 (CNNTransformerV3) full-model deployment results"
+  },
+
+  "dataset_statistics": {
+    "unified_format": {
+      "sampling_rate_hz": 100,
+      "window_length_sec": 10,
+      "window_samples": 1000,
+      "num_channels": 5,
+      "channel_names": ["ECG", "PPG", "AccX", "AccY", "AccZ"],
+      "total_balanced_samples": 21704
+    },
+    "subject_splits": {
+      "train": 46,
+      "validation": 6,
+      "test": 13
+    },
+    "sources": {
+      "ppg_dalia": {
+        "signals": ["PPG", "ACC", "ECG"],
+        "subjects": 15,
+        "original_rate_hz": 64,
+        "task": "Activity (4 classes)",
+        "samples": 12806
+      },
+      "wesad": {
+        "signals": ["ECG", "PPG", "ACC", "EDA"],
+        "subjects": 15,
+        "original_rate_hz": 700,
+        "task": "Stress (2 classes)",
+        "samples": 3439
+      },
+      "mit_bih": {
+        "signals": ["ECG"],
+        "records": 48,
+        "original_rate_hz": 360,
+        "task": "Arrhythmia (2 classes)",
+        "samples": 5459
+      }
+    },
+    "label_overlap_note": "Zero label overlap between datasets: PPG-DaLiA has activity only, WESAD has stress only, MIT-BIH has arrhythmia only. 4-case scenarios do not exist in real data."
+  },
+
+  "model_specifications": {
+    "name": "CNNTransformerV3",
+    "note": "Same model used for training and deployed on ESP32-S3 — no compression needed",
+    "parameters": 112552,
+    "size_kb": 450.2,
+    "format": "FP32",
+    "input": "5 channels x 1000 samples (ECG, PPG, AccX, AccY, AccZ)",
+    "architecture": {
+      "cnn_backbone": "Conv1d(5->32->64->64)",
+      "se_block": "SE(64->16->64)",
+      "transformer_layers": 2,
+      "transformer_heads": 4,
+      "d_model": 64,
+      "d_ff": 128,
+      "task_heads": "3-layer FC per task"
+    },
+    "classification_heads": {
+      "activity": {
+        "classes": 4,
+        "labels": ["Sedentary", "Walking", "Cycling", "HighIntensity"]
+      },
+      "stress": {
+        "classes": 2,
+        "labels": ["Baseline", "Stress"]
+      },
+      "arrhythmia": {
+        "classes": 2,
+        "labels": ["Normal", "Abnormal"]
+      }
+    }
+  },
+
+  "five_fold_cv_results": {
+    "note": "5-fold subject-wise cross-validation - PRIMARY RESULTS FOR PUBLICATION",
+    "activity": {
+      "accuracy_mean": 0.5923,
+      "accuracy_std": 0.1504,
+      "f1_macro_mean": 0.2036,
+      "f1_macro_std": 0.0352,
+      "auc_mean": 0.7074,
+      "auc_std": 0.0640
+    },
+    "stress": {
+      "accuracy_mean": 0.7453,
+      "accuracy_std": 0.0598,
+      "f1_macro_mean": 0.5283,
+      "f1_macro_std": 0.0212,
+      "auc_mean": 0.5859,
+      "auc_std": 0.0948
+    },
+    "arrhythmia": {
+      "accuracy_mean": 0.7994,
+      "accuracy_std": 0.0566,
+      "f1_macro_mean": 0.6569,
+      "f1_macro_std": 0.1317,
+      "auc_mean": 0.8317,
+      "auc_std": 0.0572
+    }
+  },
+
+  "test_results_v5": {
+    "note": "Single held-out test split — Model A / V5 (CNNTransformerV3)",
+    "activity": {
+      "accuracy": 0.9413,
+      "f1_macro": 0.2586,
+      "f1_weighted": 0.9533,
+      "auc": 0.7314
+    },
+    "stress": {
+      "accuracy": 0.8706,
+      "f1_macro": 0.8194,
+      "f1_weighted": 0.8810,
+      "auc": 0.9751
+    },
+    "arrhythmia": {
+      "accuracy": 0.9081,
+      "f1_macro": 0.6463,
+      "f1_weighted": 0.9102,
+      "auc": 0.8789
+    }
+  },
+
+  "esp32_deployment": {
+    "target": "ESP32-S3-DevKitC-1",
+    "deployed_model": "CNNTransformerV3 (full, no compression)",
+    "inference_time_ms": 2338,
+    "duty_cycle_percent": 23.4,
+    "duty_cycle_note": "2338ms inference per 10s window = 23.4% duty cycle",
+    "flash": {
+      "firmware_bytes": 767936
+    },
+    "memory": {
+      "psram_inference_buffers_kb": 687,
+      "heap_free_kb": 293,
+      "psram_free_mb": 7.3
+    },
+    "power": {
+      "voltage_v": 5.23,
+      "current_a": 0.10,
+      "power_w": 0.54
+    },
+    "sensors": [
+      {"name": "AD8232", "modality": "ECG", "interface": "ADC"},
+      {"name": "MAX30102", "modality": "PPG", "interface": "I2C (0x57)"},
+      {"name": "MPU6050", "modality": "Accelerometer", "interface": "I2C (0x68)"},
+      {"name": "Grove GSR", "modality": "EDA/GSR", "interface": "ADC"}
+    ]
+  },
+
+  "four_case_benchmark_results": {
+    "note": "4-case synthetic benchmark — unchanged from previous evaluation",
+    "case1_stress_sedentary": {
+      "alert_acc": 0.96,
+      "stress_acc": 0.99
+    },
+    "case2_stress_exercise": {
+      "alert_suppression": 0.97,
+      "false_alert_rate": 0.03
+    },
+    "case3_arrhythmia_sedentary": {
+      "alert_acc": 0.82,
+      "arrhythmia_acc": 0.87
+    },
+    "case4_arrhythmia_motion": {
+      "alert_acc": 0.88,
+      "arrhythmia_acc": 0.93
+    }
+  },
+
+  "key_findings": [
+    "V5 full-model deployment: CNNTransformerV3 (112,552 params, 450.2 KB) runs directly on ESP32-S3 without compression",
+    "Test set: Activity 94.1%, Stress 87.1% (AUC 0.975), Arrhythmia 90.8% (AUC 0.879)",
+    "5-fold CV: Activity 59.2%±15.0%, Stress 74.5%±6.0%, Arrhythmia 80.0%±5.7%",
+    "Arrhythmia AUC-ROC 0.832±0.057 in 5-fold CV",
+    "ESP32 inference: 2,338 ms per 10s window (23.4% duty cycle), 0.54W power",
+    "4-case benchmark: 96% stress alert, 82-88% arrhythmia alert, 3% false alert rate",
+    "Zero label overlap between datasets limits 4-case evaluation to synthetic benchmarks"
+  ],
+
+  "comparison_with_related_work": {
+    "stress_detection": {
+      "this_work": "74.5%±6.0% (2-class, 5-fold CV)",
+      "selfcare_wesad": "86.3% (3-class)",
+      "note": "Different class definitions; SELF-CARE uses selective fusion"
+    },
+    "arrhythmia_detection": {
+      "this_work_auc": "0.832±0.057 (5-fold CV)",
+      "acharya_mitbih": "94.0%+ accuracy (single-task CNN)",
+      "hannun_stanford": "cardiologist-level (single-task, large dataset)",
+      "note": "This work is multi-task with significantly fewer parameters"
+    },
+    "activity_recognition": {
+      "this_work": "59.2%±15.0% (4-class, 5-fold CV)",
+      "note": "PPG-DaLiA designed for HR estimation, not activity classification"
+    }
+  }
+}
