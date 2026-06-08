@@ -46,7 +46,9 @@ Four sensors feed into a single ESP32-S3 board over ADC and I²C:
 
 ## Model Architecture
 
-![Model pipeline](figures/fig1_pipeline.jpg)
+<p align="center">
+  <img src="figures/fig1_pipeline.jpg" alt="Model pipeline" width="50%">
+</p>
 
 The pipeline takes a 10-second window (11 channels × 1000 samples @ 100 Hz) through four stages:
 
