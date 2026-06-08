@@ -1,6 +1,6 @@
 # Hardware-Aware Edge Deep Learning for Multimodal Biomedical Monitoring
 
-**![Award](https://img.icons8.com/?size=100&id=xG2YSvm4niez&format=png&color=000000) Best Paper Award**
+**![Award](https://img.icons8.com/?size=40&id=xG2YSvm4niez&format=png&color=000000) Best Paper Award**
 
 **IEEE ICHI 2026** — Can a microcontroller detect stress, arrhythmia, and physical activity simultaneously from raw wrist sensors, with no cloud connection?
 
